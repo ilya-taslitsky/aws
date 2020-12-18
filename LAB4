@@ -1,0 +1,26 @@
+
+aws ec2 create-security-group --group-name ELB-Group --description "ELB Security Group" --vpc-id vpc-416ab63c
+
+aws ec2 authorize-security-group-ingress --group-id sg-0415c7c667c990ae6 --protocol tcp --port 80 --cidr 0.0.0.0/0
+
+aws elbv2 create-load-balancer --name lab4elb --subnets subnet-9b6033d6 subnet-c057d9e1 --security-groups sg-0415c7c667c990ae6
+
+aws ec2 create-security-group --group-name fromELB  --description "FromELB" --vpc-id vpc-416ab63c
+
+aws ec2 authorize-security-group-ingress --group-id sg-06fbfff082052206f --port 80 --protocol tcp --source-group sg-0415c7c667c990ae6
+
+aws ec2 create-key-pair --key-name lab4key --query 'KeyMaterial' --output text > lab4key.pem
+
+aws ec2 run-instances --image-id ami-00ddb0e5626798373 --count 2 --instance-type t2.micro --key-name lab4key --subnet-id subnet-b72dfa86
+
+aws ec2 create-image --instance-id i-0c2068e11b884cd10 --name WebServer2
+
+aws elbv2 create-target-group --name targetlab4 --protocol HTTP --port 80 --vpc-id vpc-416ab63c
+
+aws elbv2 register-targets --target-group-arn arn:aws:elasticloadbalancing:us-east-1:293513476422:targetgroup/targetlab4/64f70f8f6caa3031 --targets Id=i-0d53026b733a39d3f Id=i-0c2068e11b884cd10
+
+aws elbv2 create-listener --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:293513476422:loadbalancer/app/lab4elb/8e4b4223f8b5dee0 --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:293513476422:targetgroup/targetlab4/64f70f8f6caa3031
+
+aws autoscaling create-launch-configuration --launch-configuration-name lab4lcn --image-id ami-0c6b697fa9c18ccf8 --instance-type t2.micro
+
+aws autoscaling create-auto-scaling-group --auto-scaling-group-name MyASG --min-size 2 --max-size 2 --desired-capacity 2 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:293513476422:targetgroup/targetlab4/64f70f8f6caa3031 --launch-configuration-name lab4lcn --vpc subnet-9b6033d6,subnet-c057d9e1
