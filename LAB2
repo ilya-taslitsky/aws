@@ -1,0 +1,35 @@
+aws ec2 create-vpc --cidr-block 192.168.0.0/16
+
+
+aws ec2 create-subnet --vpc-id vpc-0cbe77879365fccf7 --cidr-block 192.168.0.0/24
+aws ec2 create-subnet --vpc-id vpc-0cbe77879365fccf7 --cidr-block 192.168.1.0/24
+
+
+aws ec2 create-internet-gateway
+
+
+aws ec2 attach-internet-gateway --vpc-id vpc-0cbe77879365fccf7 --internet-gateway-id igw-05471e6c3fadd1da8
+
+
+aws ec2 create-route-table --vpc-id vpc-0cbe77879365fccf7
+
+
+aws ec2 create-route --route-table-id rtb-09a258dc13b5ee204 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-05471e6c3fadd1da8
+
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-0cbe77879365fccf7" --query 'Subnets[*].{ID:SubnetId,CIDR:CidrBlock}'
+ 
+aws ec2 associate-route-table  --subnet-id subnet-0b90e64823f874175 --route-table-id rtb-09a258dc13b5ee204
+
+aws ec2 create-key-pair --key-name my-keyE --query 'KeyMaterial' --output text > my-key.pem
+
+chmod 400 my-key.pem
+
+aws ec2 create-security-group --group-name mygroup --description "somedescription" --vpc-id vpc-0cbe77879365fccf7
+
+aws ec2 authorize-security-group-ingress --group-id sg-014b8bb7f3be4853a --protocol tcp --port 22 --cidr 0.0.0.0/0
+
+aws ec2 run-instances --image-id ami-00ddb0e5626798373 --count 1 --instance-type t2.micro --key-name my-keyE --security-group-ids sg-014b8bb7f3be4853a --subnet-id subnet-0b90e64823f874175
+
+aws ec2 describe-instances --instance-id i-008ba175176c2d6d0
+
+ssh -i "my-key.pem" ubuntu@192.168.0.0
