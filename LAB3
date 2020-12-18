@@ -1,0 +1,32 @@
+aws ec2 create-security-group --group-name lab3group --description "lab3" --vpc-id vpc-416ab63c
+
+aws ec2 authorize-security-group-ingress --group-id sg-055ea38afa547acb7 --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-055ea38afa547acb7 --protocol tcp --port 80 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-055ea38afa547acb7 --protocol tcp --port 443 --cidr 0.0.0.0/0
+
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-416ab63c" --query 'Subnets[*].{ID:SubnetId,CIDR:CidrBlock}'
+
+aws ec2 create-key-pair --key-name lab3key --query 'KeyMaterial' --output text > lab3key.pem
+
+aws ec2 run-instances --image-id ami-00ddb0e5626798373 --count 1 --instance-type t2.micro --key-name lab3key --subnet-id subnet-21ab277e
+
+aws ec2 create-tags --resources i-08096d70b5fc63d23 --tags Key=Role,Value=WebServer
+
+//CREATING FILE WITH FOLLOWING TEXT:
+#!/bin/bash
+sudo apt-get update
+sudo apt-get install apache2 -y
+systemctl enable apache2.service
+systemctl start apache2.service
+
+base64 userData.txt > userDataEncoded.txt
+
+aws ec2 stop-instances --instance-ids i-08096d70b5fc63d23
+
+aws ec2 modify-instance-attribute --instance-id i-08096d70b5fc63d23 --attribute userData --value file://userDataEncoded.txt
+
+aws ec2 create-image --instance-id i-08096d70b5fc63d23 --name WebServer
+
+aws ec2 run-instances --image-id ami-08850cb506cdf7754 --count 1 --instance-type t2.micro --key-name lab3key --security-group-ids sg-055ea38afa547acb7
+
+
