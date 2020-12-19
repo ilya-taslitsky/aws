@@ -1,0 +1,43 @@
+aws s3api create-bucket --bucket donbass-bucket create-bucket-configuration LocationConstraint=ea-west-1
+
+aws s3 sync s3://donbass-bucket/
+
+aws s3 sync s3://donbass-bucket/
+
+aws s3 website s3://donbass-bucket/--index-document index.html --error-document error.html
+
+{
+    "Id": "S3PolicyId1",
+    "Version":"2020-10-17",
+    "Statement": [
+        {
+            "Sid": "AddCannedAcl",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:s3:::donbass-bucket/*»,,
+            "Principal": "*"
+        },
+        {
+            "Sid": "IPAllow",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Effect": "Deny",
+            "Resource": "arn:aws:s3:::donbass-bucket/*",
+            "Principal": "*",
+            "Condition": {
+                "IpAddress": {
+                    "aws:SourceIp": ["50.31.252.0/24"]
+                }
+            }
+        }
+    ]
+}
+
+
+aws s3api put-bucket-policy --bucket donbass-bucket --policy file://policy.json
+
+aws s3 rm s3://donbass-bucket/ --recursive
+
