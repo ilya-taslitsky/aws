@@ -1,8 +1,8 @@
 aws s3api create-bucket --bucket donbass-bucket create-bucket-configuration LocationConstraint=ea-west-1
 
-aws s3 sync s3://donbass-bucket/
+aws s3 sync in s3://donbass-bucket/
 
-aws s3 sync s3://donbass-bucket/
+aws s3 sync er s3://donbass-bucket/
 
 aws s3 website s3://donbass-bucket/--index-document index.html --error-document error.html
 
