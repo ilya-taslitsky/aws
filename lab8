@@ -1,0 +1,147 @@
+Createing buckets named lab8-bucket-taslitsky1 and lab8-bucket-taslitsky1-resized
+
+Creating policy thanks to the IAM console:
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:PutLogEvents",
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Resource": "arn:aws:s3::: lab8-bucket-taslitsky1/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject"
+            ],
+            "Resource": "arn:aws:s3:::lab8-bucket-taslitsky1-resized/*"
+        }
+    ]
+}  
+
+
+
+Creating role with these props:
+Trusted entity – AWS Lambda.
+Permissions – AWSLambdaS3Policy.
+Role name – lambda-s3-role.
+
+
+
+
+
+
+Creating file with fun js:
+const AWS = require('aws-sdk');
+const util = require('util');
+const sharp = require('sharp');
+
+// get reference to S3 client
+const s3 = new AWS.S3();
+
+exports.handler = async (event, context, callback) => {
+
+    // Read options from the event parameter.
+    console.log("Reading options from event:\n", util.inspect(event, {depth: 5}));
+    const srcBucket = event.Records[0].s3.bucket.name;
+    // Object key may have spaces or unicode non-ASCII characters.
+    const srcKey    = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, " "));
+    const dstBucket = srcBucket + "-resized";
+    const dstKey    = "resized-" + srcKey;
+
+    // Infer the image type from the file suffix.
+    const typeMatch = srcKey.match(/\.([^.]*)$/);
+    if (!typeMatch) {
+        console.log("Could not determine the image type.");
+        return;
+    }
+
+    // Check that the image type is supported  
+    const imageType = typeMatch[1].toLowerCase();
+    if (imageType != "jpg" && imageType != "png") {
+        console.log(`Unsupported image type: ${imageType}`);
+        return;
+    }
+
+    // Download the image from the S3 source bucket. 
+
+    try {
+        const params = {
+            Bucket: srcBucket,
+            Key: srcKey
+        };
+        var origimage = await s3.getObject(params).promise();
+
+    } catch (error) {
+        console.log(error);
+        return;
+    }  
+
+    // set thumbnail width. Resize will set the height automatically to maintain aspect ratio.
+    const width  = 200;
+
+    // Use the Sharp module to resize the image and save in a buffer.
+    try { 
+        var buffer = await sharp(origimage.Body).resize(width).toBuffer();
+            
+    } catch (error) {
+        console.log(error);
+        return;
+    } 
+
+    // Upload the thumbnail image to the destination bucket
+    try {
+        const destparams = {
+            Bucket: dstBucket,
+            Key: dstKey,
+            Body: buffer,
+            ContentType: "image"
+        };
+
+        const putResult = await s3.putObject(destparams).promise(); 
+        
+    } catch (error) {
+        console.log(error);
+        return;
+    } 
+        
+    console.log('Successfully resized ' + srcBucket + '/' + srcKey +
+        ' and uploaded to ' + dstBucket + '/' + dstKey); 
+};
+
+In terminal:
+lambda-s3$ npm install --arch=x64 --platform=linux --target=12.13.0  sharp
+
+lambda-s3$ zip -r function.zip 
+
+aws lambda create-function --function-name CreateThumbnail \
+--zip-file fileb://function.zip --handler index.handler --runtime nodejs12.x \
+--timeout 10 --memory-size 1024 \ 
+--role arn:aws:iam::123456789012:role/lambda-s3-role --cli-binary-format raw-in-base64-out
+aws lambda add-permission --function-name CreateThumbnail --principal s3.amazonaws.com \
+--statement-id s3invoke --action "lambda:InvokeFunction" \
+--source-arn arn:aws:s3:::lab8-bucket-taslitsky1 \
+--source-account 293513476422
+
+aws lambda get-policy --function-name CreateThumbnail
+
+
+Configurating policy in S3 console:
+Choose the source bucket.
+Choose Properties.
+Under Events, configure a notification with the following settings.
+Name – lambda-trigger.
+Events – All object create events.
+Send to – Lambda function.
+Lambda – CreateThumbnail.
