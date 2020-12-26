@@ -1,0 +1,48 @@
+Creating new cluster
+aws ecs create-cluster --cluster-name lab9-cluster
+
+Creating json file with these props:
+{
+    "family": "sample-fargate", 
+    "networkMode": "awsvpc", 
+    "containerDefinitions": [
+        {
+            "name": "fargate-app", 
+            "image": "httpd:2.4", 
+            "portMappings": [
+                {
+                    "containerPort": 80, 
+                    "hostPort": 80, 
+                    "protocol": "tcp"
+                }
+            ], 
+            "essential": true, 
+            "entryPoint": [
+                "sh",
+		"-c"
+            ], 
+            "command": [
+                "/bin/sh -c \"echo '<html> <head> <title>Amazon ECS Sample App</title> <style>body {margin-top: 40px; background-color: #333;} </style> </head><body> <div style=color:white;text-align:center> <h1>Amazon ECS Sample App</h1> <h2>Congratulations!</h2> <p>Your application is now running on a container in Amazon ECS.</p> </div></body></html>' >  /usr/local/apache2/htdocs/index.html && httpd-foreground\""
+            ]
+        }
+    ], 
+    "requiresCompatibilities": [
+        "FARGATE"
+    ], 
+    "cpu": "256", 
+    "memory": "512"
+}
+
+aws ecs register-task-definition --cli-input-json file://fargate-task.json
+
+aws ecs list-task-definitions
+
+aws ec2 create-security-group --group-name ecssecgr --description "TaslitskyLab9SG" --vpc-id vpc-3e4c8c43
+
+aws ec2 authorize-security-group-ingress --group-id sg-0f61466a00f9edb9d --protocol tcp --port 80 --cidr 0.0.0.0/0
+
+aws ecs create-service --cluster lab9-cluster --service-name fargate-service --task-definition sample-fargate:1 --desired-count 1 --launch-type "FARGATE" --network-configuration "awsvpcConfiguration={subnets=[subnet-f0452cfe],securityGroups=[sg-0f61466a00f9edb9d],assignPublicIp=ENABLED}"
+
+aws ecs list-services --cluster lab9-cluster
+
+aws ecs describe-services --cluster lab9-cluster --services lab9-service
